@@ -64,6 +64,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Load or Create initial restaurant for demo
   useEffect(() => {
     const initRestaurant = async () => {
+      console.log('DB_INIT_LOG: Starting initRestaurant flow. Current restaurantId:', restaurantId);
       try {
         if (restaurantId) {
           // Verify if it still exists and fetch total_tables
@@ -108,7 +109,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }
         }
       } catch (err) {
-        console.error('DEBUG: initRestaurant failed catch:', err);
+        console.error('DB_INIT_LOG: initRestaurant failed catch:', err);
       }
     };
     initRestaurant();
@@ -177,6 +178,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setServiceAlerts(mappedAlerts);
     }
 
+    console.log('DB_INIT_LOG: Data refresh completed successfully.');
     setIsLoading(false);
   }, [restaurantId]);
 
@@ -209,11 +211,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       })
       .subscribe((status, error) => {
         console.log(`REALTIME_DEBUG: Status for restaurant ${restaurantId}:`, status);
-        if (error) console.error('REALTIME_DEBUG: Subscription error details:', error);
+        if (error) {
+          console.error('REALTIME_DEBUG: Subscription error details:', error);
+          setSyncStatus('error');
+        }
 
-        if (status === 'SUBSCRIBED') setSyncStatus('connected');
-        else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setSyncStatus('error');
-        else setSyncStatus('connecting');
+        if (status === 'SUBSCRIBED') {
+          console.log('REALTIME_DEBUG: Successfully subscribed to realtime updates');
+          setSyncStatus('connected');
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('REALTIME_DEBUG: Subscription failed or closed:', status);
+          setSyncStatus('error');
+        } else {
+          setSyncStatus('connecting');
+        }
       });
 
     const menuSubscription = supabase
