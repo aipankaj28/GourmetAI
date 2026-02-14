@@ -27,7 +27,7 @@ const VisualMenu: React.FC<VisualMenuProps> = ({ menuItems, onAddToCart }) => {
           <img
             src={item.imageUrl}
             alt={item.name}
-            className="w-full h-32 md:h-48 object-cover object-center"
+            className="w-full h-32 md:h-48 object-contain object-center bg-gray-50"
           />
           <div className="p-3 md:p-4 flex-grow flex flex-col justify-between">
             <div>

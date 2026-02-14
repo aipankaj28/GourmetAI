@@ -516,12 +516,18 @@ const CustomerInterface: React.FC = () => {
     <div className="flex flex-col md:flex-row min-h-screen w-full bg-gray-50 text-gray-800">
       {/* Left Pane: Avatar and Controls */}
       <div className="w-full md:w-1/2 flex flex-col p-4 md:p-6 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-2xl sticky top-0 z-20 md:h-screen overflow-y-auto border-b md:border-b-0 md:border-r border-blue-700">
-        <div className="flex-grow flex flex-col items-center justify-center py-4 md:py-8">
-          <div className="flex items-center gap-3 mb-6 md:mb-8">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center text-blue-900 text-xl md:text-2xl font-black shadow-lg">G</div>
-            <h1 className="text-3xl md:text-5xl font-black tracking-tight drop-shadow-md">GourmetAI</h1>
+        <div className="flex flex-col items-center py-2 md:py-8">
+          <div className="w-full flex items-center justify-between mb-4 md:mb-8 px-2">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center text-blue-900 text-lg md:text-2xl font-black shadow-lg">G</div>
+              <h1 className="text-xl md:text-5xl font-black tracking-tight drop-shadow-md">GourmetAI</h1>
+            </div>
+            <div className="flex gap-4 text-xs md:text-sm">
+              <a href="#/admin-login" className="text-blue-200 hover:text-white transition-colors">Admin</a>
+              <a href="#/kitchen-login" className="text-blue-200 hover:text-white transition-colors">Kitchen</a>
+            </div>
           </div>
-          <div className="relative group bg-blue-700 p-4 md:p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col items-center w-full max-w-sm md:max-w-md border border-blue-600/50 backdrop-blur-sm">
+          <div className="relative group bg-blue-700 p-3 md:p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col items-center w-full max-w-[280px] md:max-w-md border border-blue-600/50 backdrop-blur-sm">
             <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-50 group-hover:opacity-80 transition-opacity"></div>
             <AvatarDisplay
               isListening={agentState.isListening}
@@ -529,7 +535,7 @@ const CustomerInterface: React.FC = () => {
               error={agentState.error}
               videoTrack={avatarVideoTrack}
             />
-            <p className="text-lg font-medium mt-4 text-center">
+            <p className="text-base md:text-lg font-medium mt-3 md:mt-4 text-center">
               {agentState.isProcessing
                 ? 'Starting agent...'
                 : !agentState.isAwake
@@ -612,7 +618,7 @@ const CustomerInterface: React.FC = () => {
                 ? 'Stop Listening'
                 : 'Start Voice Agent'}
           </Button>
-          <div className="flex flex-col mt-4 md:mt-0 md:ml-4">
+          <div className="hidden md:flex flex-col md:ml-4">
             <a href="#/admin-login" className="text-blue-300 hover:text-blue-100 mb-2">Admin Login</a>
             <a href="#/kitchen-login" className="text-blue-300 hover:text-blue-100">Kitchen Login</a>
           </div>
