@@ -139,7 +139,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 130.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/cornsoup/400/300',
+    imageUrl: '/assets/menu/sweetcorn-soup.png',
   },
   {
     id: 'm15',
@@ -149,7 +149,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 140.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/lemoncoriander/400/300',
+    imageUrl: '/assets/menu/lemon-coriander-soup.png',
   },
   {
     id: 'm16',
@@ -159,7 +159,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 150.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/onionbhaji/400/300',
+    imageUrl: '/assets/menu/onion-fritters.png',
   },
   {
     id: 'm17',
@@ -169,7 +169,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 180.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/springrolls/400/300',
+    imageUrl: '/assets/menu/veg-spring-rolls.png',
   },
   {
     id: 'm18',
@@ -179,7 +179,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.NON_VEG,
     price: 320.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/chicken65/400/300',
+    imageUrl: '/assets/menu/chicken-65.png',
   },
   {
     id: 'm19',
@@ -189,7 +189,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 280.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/paneer65/400/300',
+    imageUrl: '/assets/menu/fried-panner.png',
   },
   {
     id: 'm20',
@@ -199,7 +199,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 280.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/bainganbharta/400/300',
+    imageUrl: '/assets/menu/baingan-bharta.png',
   },
   {
     id: 'm21',
@@ -209,7 +209,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 360.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/palakpaneer/400/300',
+    imageUrl: '/assets/menu/palak-paneer.png',
   },
   {
     id: 'm22',
@@ -219,7 +219,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 250.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/chanamasala/400/300',
+    imageUrl: '/assets/menu/chana-masala.png',
   },
   {
     id: 'm23',
@@ -229,7 +229,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.NON_VEG,
     price: 450.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/fishcurry/400/300',
+    imageUrl: '/assets/menu/goan-fish-curry.png',
   },
   {
     id: 'm24',
@@ -239,7 +239,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 30.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/tandooriroti/400/300',
+    imageUrl: '/assets/menu/tandoori-roti.png',
   },
   {
     id: 'm25',
@@ -249,7 +249,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 60.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/paratha/400/300',
+    imageUrl: '/assets/menu/lachha-paratha.png',
   },
   {
     id: 'm26',
@@ -259,7 +259,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 80.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/raita/400/300',
+    imageUrl: '/assets/menu/boondi-raita.png',
   },
   {
     id: 'm27',
@@ -269,7 +269,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 80.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/rasgulla/400/300',
+    imageUrl: '/assets/menu/rasulla.png',
   },
   {
     id: 'm28',
@@ -279,7 +279,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     type: MealType.VEG,
     price: 100.00,
     availability: true,
-    imageUrl: 'https://picsum.photos/seed/jalebi/400/300',
+    imageUrl: '/assets/menu/Jalebi.png',
   },
 ];
 
