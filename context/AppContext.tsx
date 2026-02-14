@@ -74,6 +74,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             .eq('id', restaurantId)
             .maybeSingle();
 
+          console.log('DB_INIT_LOG: Verification of restaurantId:', { restaurantId, exists: !!verify, error: vError });
+
           if (vError || !verify) {
             console.warn('DEBUG: Stored restaurantId is invalid or deleted. Resetting.');
             setRestaurantId(null);
@@ -85,7 +87,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         if (!restaurantId) {
           // Try to find ANY existing restaurant
-          const { data: existing } = await supabase.from('restaurants').select('id, total_tables').limit(1).maybeSingle();
+          const { data: existing, error: eError } = await supabase.from('restaurants').select('id, total_tables').limit(1).maybeSingle();
+          console.log('DB_INIT_LOG: Find existing restaurant result:', { found: !!existing, error: eError });
           if (existing) {
             console.log('DEBUG: Found existing restaurant:', existing.id);
             setRestaurantId(existing.id);
@@ -119,10 +122,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!restaurantId) return;
 
     // Fetch Menu
-    const { data: menuData } = await supabase
+    const { data: menuData, error: mError } = await supabase
       .from('menu_items')
       .select('*')
       .eq('restaurant_id', restaurantId);
+
+    console.log('DB_INIT_LOG: menu_items fetch result:', { count: menuData?.length || 0, error: mError });
 
     if (menuData && menuData.length > 0) {
       const mappedMenu = menuData.map(item => ({
@@ -139,11 +144,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     // Fetch Orders
-    const { data: ordersData } = await supabase
+    const { data: ordersData, error: oError } = await supabase
       .from('orders')
       .select('*')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false });
+
+    console.log('DB_INIT_LOG: orders fetch result:', { count: ordersData?.length || 0, error: oError });
 
     if (ordersData) {
       const mappedOrders = ordersData.map(o => ({
