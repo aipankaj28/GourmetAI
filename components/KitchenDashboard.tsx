@@ -37,14 +37,27 @@ const KitchenDashboard: React.FC = () => {
     }
   };
 
+  console.log('KITCHEN_DEBUG: Raw orders from context:', orders.length);
+
   const sortedOrders = orders
     .filter((order) => {
       // Hide paid or cancelled from active queue
       if (order.status === OrderStatus.PAID) return false;
 
       const orderDate = new Date(order.timestamp);
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      return orderDate >= twoHoursAgo;
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000); // Relaxed from 2h to 24h
+
+      const isVisible = orderDate >= twentyFourHoursAgo;
+
+      if (!isVisible) {
+        console.log(`KITCHEN_DEBUG: Filtering out order ${order.order_id} because it is too old:`, {
+          orderTime: order.timestamp,
+          currentTime: new Date().toISOString(),
+          threshold: twentyFourHoursAgo.toISOString()
+        });
+      }
+
+      return isVisible;
     })
     .sort((a, b) => {
       // Oldest first
