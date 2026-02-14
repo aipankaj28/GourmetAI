@@ -37,30 +37,15 @@ const KitchenDashboard: React.FC = () => {
     }
   };
 
-  console.log('KITCHEN_DEBUG: Raw orders from context:', orders.length);
-
   const sortedOrders = orders
     .filter((order) => {
-      // Hide paid or cancelled from active queue
-      if (order.status === OrderStatus.PAID) return false;
-
-      const orderDate = new Date(order.timestamp);
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000); // Relaxed from 2h to 24h
-
-      const isVisible = orderDate >= twentyFourHoursAgo;
-
-      if (!isVisible) {
-        console.log(`KITCHEN_DEBUG: Filtering out order ${order.order_id} because it is too old:`, {
-          orderTime: order.timestamp,
-          currentTime: new Date().toISOString(),
-          threshold: twentyFourHoursAgo.toISOString()
-        });
-      }
-
-      return isVisible;
+      // Robust fix: Ignore browser clock/timezones for visibility. 
+      // Only hide orders that are explicitly marked as "Paid".
+      // This ensures all "In Progress" orders (Pending, Preparing, etc.) are always visible.
+      return order.status !== OrderStatus.PAID;
     })
     .sort((a, b) => {
-      // Oldest first
+      // Show oldest orders first (prioritize earliest requests)
       return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     });
 

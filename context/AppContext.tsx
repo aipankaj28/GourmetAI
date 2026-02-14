@@ -148,7 +148,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .from('orders')
       .select('*')
       .eq('restaurant_id', restaurantId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50); // Fetch most recent 50 orders to balance performance/history
 
     console.log('DB_INIT_LOG: orders fetch result:', { count: ordersData?.length || 0, error: oError });
 
