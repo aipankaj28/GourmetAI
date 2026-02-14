@@ -1,0 +1,7 @@
+{
+  "name": "GourmetAI: The Interactive Avatar Restaurant Suite",
+  "description": "A full-stack web application for restaurants featuring a 2D interactive AI Avatar voice agent for real-time ordering, kitchen communication, and administrative menu management.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
