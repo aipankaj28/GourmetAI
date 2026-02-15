@@ -527,7 +527,7 @@ const CustomerInterface: React.FC = () => {
               <a href="#/kitchen-login" className="text-blue-200 hover:text-white transition-colors">Kitchen</a>
             </div>
           </div>
-          <div className="relative group bg-blue-700 p-3 md:p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col items-center w-full max-w-[280px] md:max-w-md border border-blue-600/50 backdrop-blur-sm">
+          <div className="relative group bg-blue-700 p-2 md:p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col items-center w-full max-w-[260px] md:max-w-md border border-blue-600/50 backdrop-blur-sm">
             <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-50 group-hover:opacity-80 transition-opacity"></div>
             <AvatarDisplay
               isListening={agentState.isListening}
@@ -559,31 +559,35 @@ const CustomerInterface: React.FC = () => {
               </div>
             )}
 
-            {/* Transcription Feed (always visible for debugging) */}
-            {(agentState.currentInputTranscription || agentState.currentOutputTranscription) && (
-              <div className="mt-6 w-full max-w-md bg-black bg-opacity-30 rounded-lg p-4 text-sm space-y-2 border border-white border-opacity-10">
+            {/* Transcription Feed - now conditional */}
+            {import.meta.env.VITE_SHOW_DEBUG_LOGS === 'true' && (
+              <>
+                {(agentState.currentInputTranscription || agentState.currentOutputTranscription) && (
+                  <div className="mt-4 w-full max-w-md bg-black bg-opacity-30 rounded-lg p-3 text-xs space-y-1 border border-white border-opacity-10">
+                    {agentState.currentInputTranscription && (
+                      <p className="text-gray-300 italic">
+                        <span className="text-blue-400 font-bold mr-2">You:</span>
+                        {agentState.currentInputTranscription}
+                      </p>
+                    )}
+                    {agentState.currentOutputTranscription && (
+                      <p className="text-gray-300">
+                        <span className="text-green-400 font-bold mr-2">Chef:</span>
+                        {agentState.currentOutputTranscription}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {agentState.currentInputTranscription && (
-                  <p className="text-gray-300 italic">
-                    <span className="text-blue-400 font-bold mr-2">You:</span>
-                    {agentState.currentInputTranscription}
-                  </p>
+                  <p className="text-[10px] text-blue-200 mt-1 italic">User: {agentState.currentInputTranscription}</p>
                 )}
                 {agentState.currentOutputTranscription && (
-                  <p className="text-gray-300">
-                    <span className="text-green-400 font-bold mr-2">Chef:</span>
-                    {agentState.currentOutputTranscription}
-                  </p>
+                  <p className="text-[10px] text-blue-200 mt-1 italic">Avatar: {agentState.currentOutputTranscription}</p>
                 )}
-              </div>
-            )}
-            {agentState.currentInputTranscription && (
-              <p className="text-sm text-blue-200 mt-2 italic">User: {agentState.currentInputTranscription}</p>
-            )}
-            {agentState.currentOutputTranscription && (
-              <p className="text-sm text-blue-200 mt-1 italic">Avatar: {agentState.currentOutputTranscription}</p>
-            )}
-            {speechOutput && (
-              <p className="text-sm text-blue-200 mt-1 italic">Last message: {speechOutput}</p>
+                {speechOutput && (
+                  <p className="text-[10px] text-blue-200 mt-1 italic">Last message: {speechOutput}</p>
+                )}
+              </>
             )}
           </div>
         </div>
