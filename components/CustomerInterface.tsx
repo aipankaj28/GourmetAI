@@ -447,8 +447,8 @@ const CustomerInterface: React.FC = () => {
   };
 
   const menuFilterControls = (
-    <div className="flex flex-wrap gap-2 mb-4 p-4 bg-white rounded-lg shadow-sm">
-      <Button onClick={() => setFilteredMenuItems(menuItems)} variant="outline" size="sm">
+    <div className="flex flex-wrap gap-1 md:gap-2 mb-2 md:mb-4 p-2 md:p-4 bg-white rounded-lg shadow-sm">
+      <Button onClick={() => setFilteredMenuItems(menuItems)} variant="outline" size="sm" className="text-[10px] md:text-sm px-2 py-0.5 md:px-4 md:py-2">
         All
       </Button>
       {Object.values(Category).map(cat => (
@@ -457,6 +457,7 @@ const CustomerInterface: React.FC = () => {
           onClick={() => updateFilteredMenu({ category: cat })}
           variant="outline"
           size="sm"
+          className="text-[10px] md:text-sm px-2 py-0.5 md:px-4 md:py-2"
         >
           {cat}
         </Button>
@@ -467,6 +468,7 @@ const CustomerInterface: React.FC = () => {
           onClick={() => updateFilteredMenu({ type: type })}
           variant="outline"
           size="sm"
+          className="text-[10px] md:text-sm px-2 py-0.5 md:px-4 md:py-2"
         >
           {type}
         </Button>
@@ -477,13 +479,14 @@ const CustomerInterface: React.FC = () => {
         }}
         variant="outline"
         size="sm"
+        className="text-[10px] md:text-sm px-2 py-0.5 md:px-4 md:py-2"
       >
         Available
       </Button>
       <input
         type="text"
-        placeholder="Search by name..."
-        className="p-2 border rounded-md text-sm flex-grow min-w-[150px]"
+        placeholder="Search..."
+        className="p-1.5 md:p-2 border rounded-md text-xs md:text-sm flex-grow min-w-[120px]"
         onChange={(e) => updateFilteredMenu({ name: e.target.value })}
       />
     </div>
@@ -519,15 +522,15 @@ const CustomerInterface: React.FC = () => {
         <div className="flex flex-col items-center py-2 md:py-8">
           <div className="w-full flex items-center justify-between mb-4 md:mb-8 px-2">
             <div className="flex items-center gap-2 md:gap-3">
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center text-blue-900 text-lg md:text-2xl font-black shadow-lg">G</div>
-              <h1 className="text-xl md:text-5xl font-black tracking-tight drop-shadow-md">GourmetAI</h1>
+              <div className="w-6 h-6 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center text-blue-900 text-sm md:text-2xl font-black shadow-lg">G</div>
+              <h1 className="text-lg md:text-5xl font-black tracking-tight drop-shadow-md">GourmetAI</h1>
             </div>
             <div className="flex gap-4 text-xs md:text-sm">
               <a href="#/admin-login" className="text-blue-200 hover:text-white transition-colors">Admin</a>
               <a href="#/kitchen-login" className="text-blue-200 hover:text-white transition-colors">Kitchen</a>
             </div>
           </div>
-          <div className="relative group bg-blue-700 p-2 md:p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col items-center w-full max-w-[260px] md:max-w-md border border-blue-600/50 backdrop-blur-sm">
+          <div className="relative group bg-blue-700 p-2 md:p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col items-center w-full max-w-[220px] md:max-w-md border border-blue-600/50 backdrop-blur-sm">
             <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-blue-500 rounded-full blur-[60px] opacity-50 group-hover:opacity-80 transition-opacity"></div>
             <AvatarDisplay
               isListening={agentState.isListening}
@@ -535,11 +538,11 @@ const CustomerInterface: React.FC = () => {
               error={agentState.error}
               videoTrack={avatarVideoTrack}
             />
-            <p className="text-base md:text-lg font-medium mt-3 md:mt-4 text-center">
+            <p className="text-xs md:text-lg font-medium mt-1 md:mt-4 text-center">
               {agentState.isProcessing
                 ? 'Starting agent...'
                 : !agentState.isAwake
-                  ? 'Paused. Say "Lisa" to wake me'
+                  ? 'Paused. Say "Lisa"'
                   : agentState.isListening
                     ? 'Listening...'
                     : 'Tap to Speak'}
@@ -550,10 +553,10 @@ const CustomerInterface: React.FC = () => {
                 {!agentState.isAwake && (
                   <button
                     onClick={() => wakeAgent(handleAgentStateChange)}
-                    className="px-6 py-3 bg-green-500 text-white font-bold rounded-full hover:bg-green-600 transition-all transform hover:scale-105 shadow-xl flex items-center gap-3 animate-bounce"
+                    className="px-4 py-2 md:px-6 md:py-3 bg-green-500 text-white text-xs md:text-base font-bold rounded-full hover:bg-green-600 transition-all transform hover:scale-105 shadow-xl flex items-center gap-2 animate-bounce"
                   >
-                    <span className="w-3 h-3 bg-white rounded-full animate-ping"></span>
-                    Click to Wake Up Agent
+                    <span className="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                    Wake Up Agent
                   </button>
                 )}
               </div>
@@ -593,12 +596,12 @@ const CustomerInterface: React.FC = () => {
         </div>
 
         {/* Persistent Controls at the bottom */}
-        <div className="p-4 border-t border-blue-700 bg-blue-900/50 backdrop-blur-md sticky bottom-0 z-10 w-full flex flex-col items-center md:flex-row md:justify-around gap-4">
-          <div className="flex items-center space-x-2">
-            <label htmlFor="tableNumber" className="font-semibold">Table:</label>
+        <div className="p-2 md:p-4 border-t border-blue-700 bg-blue-900/50 backdrop-blur-md sticky bottom-0 z-10 w-full flex flex-col items-center md:flex-row md:justify-around gap-2 md:gap-4">
+          <div className="flex items-center space-x-2 text-xs md:text-base font-bold">
+            <label htmlFor="tableNumber">Table:</label>
             <select
               id="tableNumber"
-              className="p-2 rounded-md bg-blue-800 border border-blue-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+              className="p-1 md:p-2 rounded-md bg-blue-800 border border-blue-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-24 md:w-32"
               value={tableNumber}
               onChange={(e) => setTableNumber(e.target.value)}
             >
@@ -612,12 +615,12 @@ const CustomerInterface: React.FC = () => {
           </div>
           <Button
             onClick={toggleAgent}
-            className={`w-full md:w-auto px-6 py-3 text-lg transition-all duration-300 ${agentState.isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
+            className={`w-full md:w-auto px-4 py-1.5 md:px-6 md:py-3 text-sm md:text-lg font-bold transition-all duration-300 ${agentState.isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
               }`}
             disabled={agentState.isProcessing}
           >
             {agentState.isProcessing
-              ? 'Initializing...'
+              ? '...'
               : agentState.isListening
                 ? 'Stop Listening'
                 : 'Start Voice Agent'}
