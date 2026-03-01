@@ -18,7 +18,7 @@ const ReceiptDisplay: React.FC<ReceiptDisplayProps> = ({ order, taxRates }) => {
         <h2 className="text-4xl font-bold text-gray-900 mb-2">GourmetAI Restaurant</h2>
         <p className="text-sm text-gray-600">Your Receipt</p>
         <p className="text-xs text-gray-500 mt-2">Order ID: {order.order_id}</p>
-        <p className="text-xs text-gray-500">Table: {order.table_number_or_online}</p>
+        <p className="text-xs text-gray-500">{import.meta.env.VITE_TABLE_LABEL || 'Table'}: {order.table_number_or_online}</p>
         <p className="text-xs text-gray-500">{new Date(order.timestamp).toLocaleString()}</p>
       </div>
 

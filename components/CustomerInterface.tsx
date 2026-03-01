@@ -96,7 +96,8 @@ const CustomerInterface: React.FC = () => {
   }, []);
 
   const handleIntent = useCallback(async (intent: Intent, args: Record<string, unknown>) => {
-    console.log('Handling intent:', intent, args);
+    const isDebugEnabled = import.meta.env.VITE_SHOW_DEBUG_LOGS === 'true';
+    if (isDebugEnabled) console.log('Handling intent:', intent, args);
     let agentResponseText = '';
 
     switch (intent) {
@@ -121,12 +122,15 @@ const CustomerInterface: React.FC = () => {
 
       case Intent.REMOVE:
         const removeName = (args.itemName as string)?.toLowerCase();
+        const removeQuantity = Number(args.quantity) || undefined;
         if (removeName) {
           const itemToRemove = cart.find(ci => ci.name.toLowerCase().includes(removeName));
           if (itemToRemove) {
             if (itemToRemove.status === ItemStatus.PENDING) {
-              await removeFromCart(itemToRemove.id);
-              agentResponseText = `Removed ${itemToRemove.name} from your order.`;
+              await removeFromCart(itemToRemove.id, removeQuantity);
+              agentResponseText = removeQuantity
+                ? `Removed ${removeQuantity} ${itemToRemove.name} from your order.`
+                : `Removed ${itemToRemove.name} from your order.`;
               return { success: true, message: agentResponseText };
             } else {
               agentResponseText = `Sorry, ${itemToRemove.name} is already being prepared or served and cannot be removed.`;
@@ -265,7 +269,7 @@ const CustomerInterface: React.FC = () => {
         break;
     }
     // Gemini Live automatically handles TTS for its responses, so `setSpeechOutput` here is mainly for display.
-  }, [menuItems, cart, addToCart, clearCart, taxRates, placeOrder, sendServiceAlert, updateFilteredMenu, setFilteredMenuItems, tableNumber]);
+  }, [menuItems, cart, addToCart, removeFromCart, generateBill, sendServiceAlert, updateFilteredMenu, setFilteredMenuItems, tableNumber]);
 
   // Ref to always have the latest handleIntent for the voice agent
   const handleIntentRef = useRef(handleIntent);
@@ -278,7 +282,8 @@ const CustomerInterface: React.FC = () => {
   }, []);
 
   const startAgent = useCallback(async () => {
-    console.log('UI DEBUG: startAgent function called.');
+    const isDebugEnabled = import.meta.env.VITE_SHOW_DEBUG_LOGS === 'true';
+    if (isDebugEnabled) console.log('UI DEBUG: startAgent function called.');
     if (!isApiKeySelected) {
       handleApiKeySelection();
       return;
@@ -315,6 +320,10 @@ const CustomerInterface: React.FC = () => {
             itemName: {
               type: Type.STRING,
               description: 'The name of the menu item to remove.',
+            },
+            quantity: {
+              type: Type.NUMBER,
+              description: 'The quantity to remove. Omit to remove all units of this item.',
             },
           },
           required: ['itemName'],
@@ -392,6 +401,7 @@ const CustomerInterface: React.FC = () => {
          Be friendly, helpful, and knowledgeable about Indian cuisine.
           When a user asks about menu items, use 'queryMenu' for details.
           When they order, use 'orderFood'.
+          When they want to remove an item or reduce quantity, use 'removeFood' (e.g., "remove one Malai Kofta").
           When asking for bill, use 'requestBill'. 
           If you call 'requestBill' and the system responds with 'PENDING_ITEMS_DETECTED', you MUST ask the user if they want to cancel those specific pending items. 
           Only if they say "yes" or confirm, call 'requestBill' again with 'confirmCancelPending: true'.
@@ -598,7 +608,7 @@ const CustomerInterface: React.FC = () => {
         {/* Persistent Controls at the bottom */}
         <div className="p-2 md:p-4 border-t border-blue-700 bg-blue-900/50 backdrop-blur-md sticky bottom-0 z-10 w-full flex flex-col items-center md:flex-row md:justify-around gap-2 md:gap-4">
           <div className="flex items-center space-x-2 text-xs md:text-base font-bold">
-            <label htmlFor="tableNumber">Table:</label>
+            <label htmlFor="tableNumber">{import.meta.env.VITE_TABLE_LABEL || 'Table'}:</label>
             <select
               id="tableNumber"
               className="p-1 md:p-2 rounded-md bg-blue-800 border border-blue-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-24 md:w-32"
@@ -606,8 +616,8 @@ const CustomerInterface: React.FC = () => {
               onChange={(e) => setTableNumber(e.target.value)}
             >
               {[...Array(totalTables)].map((_, i) => (
-                <option key={i + 1} value={`Table ${i + 1}`}>
-                  Table {i + 1}
+                <option key={i + 1} value={String(i + 1)}>
+                  {i + 1}
                 </option>
               ))}
               <option value="Online">Online</option>

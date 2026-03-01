@@ -20,6 +20,7 @@ interface AppContextType {
   deleteTaxRate: (name: string) => void;
   cart: CartItem[];
   addToCart: (item: MenuItem, quantity: number) => void;
+  removeFromCart: (itemId: string, quantityToRemove?: number) => Promise<void>;
   clearCart: () => void;
   orders: Order[];
   placeOrder: (tableNumberOrOnline: string) => Promise<Order>;
@@ -52,7 +53,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [orders, setOrders] = useState<Order[]>([]);
   const [serviceAlerts, setServiceAlerts] = useState<ServiceAlert[]>([]);
   const [filteredMenuItems, setFilteredMenuItems] = useState<MenuItem[]>([]);
-  const [tableNumber, setTableNumber] = useState<string>('Table 1');
+  const [tableNumber, setTableNumber] = useState<string>('1');
   const tableNumberRef = useRef(tableNumber);
   const [totalTables, setTotalTables] = useState<number>(10);
 
@@ -494,7 +495,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [restaurantId, taxRates]);
 
-  const removeFromCart = useCallback(async (itemId: string) => {
+  const removeFromCart = useCallback(async (itemId: string, quantityToRemove?: number) => {
     if (!restaurantId) return;
     const currentTable = tableNumberRef.current;
 
@@ -510,22 +511,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!order) return;
 
     const items = order.items as CartItem[];
-    const itemToRemove = items.find(i => i.id === itemId);
+    const itemIdx = items.findIndex(i => i.id === itemId);
 
-    if (!itemToRemove || itemToRemove.status !== ItemStatus.PENDING) {
-      console.warn('Cannot remove item: not in pending status.');
+    if (itemIdx === -1 || items[itemIdx].status !== ItemStatus.PENDING) {
+      console.warn('Cannot remove item: not found or not in pending status.');
       return;
     }
 
-    const updatedItems = items.filter(i => i.id !== itemId);
+    const itemToModify = items[itemIdx];
+    let updatedItems: CartItem[];
+    let totalReductionWithTax = 0;
 
-    // Calculate new total
-    const itemSubtotal = itemToRemove.price * itemToRemove.quantity;
-    let itemTotalWithTax = itemSubtotal;
-    taxRates.forEach(tax => { itemTotalWithTax += itemSubtotal * tax.percentage; });
+    // Calculate reduction amount
+    const qtyToRemove = quantityToRemove !== undefined ? Math.min(quantityToRemove, itemToModify.quantity) : itemToModify.quantity;
+    const reductionSubtotal = itemToModify.price * qtyToRemove;
+    totalReductionWithTax = reductionSubtotal;
+    taxRates.forEach(tax => { totalReductionWithTax += reductionSubtotal * tax.percentage; });
+
+    if (qtyToRemove >= itemToModify.quantity) {
+      // Remove entirely
+      updatedItems = items.filter((_, idx) => idx !== itemIdx);
+    } else {
+      // Reduce quantity
+      updatedItems = [...items];
+      updatedItems[itemIdx] = { ...itemToModify, quantity: itemToModify.quantity - qtyToRemove };
+    }
 
     if (updatedItems.length === 0) {
-      // If no items left, cancel the order or delete it? Let's delete it for simplicity in "cart" mode
       await supabase.from('orders').delete().eq('id', order.id);
       setCart([]);
     } else {
@@ -533,7 +545,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .from('orders')
         .update({
           items: updatedItems,
-          total_amount: Number(order.total_amount) - itemTotalWithTax
+          total_amount: Math.max(0, Number(order.total_amount) - totalReductionWithTax)
         })
         .eq('id', order.id);
 
@@ -859,6 +871,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     deleteTaxRate,
     cart,
     addToCart,
+    removeFromCart,
     clearCart,
     orders,
     placeOrder,

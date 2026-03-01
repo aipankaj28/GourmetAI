@@ -121,7 +121,7 @@ const AdminDashboard: React.FC = () => {
         <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-6 border-b pb-4">Restaurant Settings</h2>
         <div className="max-w-xs space-y-4">
           <Input
-            label="Total Number of Tables"
+            label={`Total Number of ${import.meta.env.VITE_TABLE_LABEL || 'Table'}s`}
             type="number"
             min="1"
             max="100"
@@ -129,7 +129,7 @@ const AdminDashboard: React.FC = () => {
             onChange={(e) => setEditingTotalTables(parseInt(e.target.value) || 1)}
           />
           <Button onClick={() => updateTotalTables(editingTotalTables)}>
-            Update Table Count
+            Update {import.meta.env.VITE_TABLE_LABEL || 'Table'} Count
           </Button>
         </div>
       </div>
@@ -214,7 +214,7 @@ const AdminDashboard: React.FC = () => {
             {serviceAlerts.filter(alert => !alert.resolved).map(alert => (
               <li key={alert.id} className="py-4 flex justify-between items-center">
                 <div>
-                  <p className="text-lg font-semibold text-gray-800">Table {alert.table}: {alert.message || `Request for ${alert.type}`}</p>
+                  <p className="text-lg font-semibold text-gray-800">{import.meta.env.VITE_TABLE_LABEL || 'Table'} {alert.table}: {alert.message || `Request for ${alert.type}`}</p>
                   <p className="text-sm text-gray-500">{new Date(alert.timestamp).toLocaleString()}</p>
                 </div>
                 <Button variant="primary" size="sm" onClick={async () => await resolveServiceAlert(alert.id)}>Resolve</Button>
