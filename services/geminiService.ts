@@ -166,7 +166,11 @@ export const startLiveAgent = async (
 
       const pcmBlob = createPcmBlob(inputData);
       sessionPromise?.then((session) => {
-        session.sendRealtimeInput({ media: pcmBlob });
+        try {
+          session.sendRealtimeInput({ media: pcmBlob });
+        } catch (inputErr) {
+          console.warn('DEBUG: Failed to send realtime input (session likely closed):', inputErr);
+        }
       });
     };
 
@@ -296,11 +300,11 @@ export const startLiveAgent = async (
               } catch (e) {
                 console.error('ERROR: Error executing function:', fc.name, e);
                 sessionInstance?.sendToolResponse({
-                  functionResponses: {
+                  functionResponses: [{
                     id: fc.id,
                     name: fc.name,
                     response: { error: `Error executing ${fc.name}: ${(e as Error).message}` },
-                  }
+                  }]
                 });
               }
             }
@@ -411,7 +415,7 @@ export const startLiveAgent = async (
           stopLiveAgent();
         },
         onclose: (e: CloseEvent) => {
-          console.log('DEBUG: Gemini Live session closed:', e);
+          console.log(`DEBUG: Gemini Live session closed. Code: ${e.code}, Reason: ${e.reason || 'No reason provided'}`);
           onAgentStateChange({ isListening: false, isProcessing: false, isSpeaking: false, error: null, currentInputTranscription: '', currentOutputTranscription: '' });
           stopAudioStreaming();
           cleanupAudioContexts();
