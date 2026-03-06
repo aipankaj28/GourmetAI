@@ -58,6 +58,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tableNumber, setTableNumber] = useState<string>('1');
   const tableNumberRef = useRef(tableNumber);
   const [totalTables, setTotalTables] = useState<number>(10);
+  const cartOperationQueue = useRef<Promise<any>>(Promise.resolve());
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -282,21 +283,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Sync cart with active order for current table
   useEffect(() => {
-    console.log('CART_SYNC_LOG: Checking orders for table:', tableNumber, 'Total orders:', orders.length);
-    // Find any non-cancelled orders for this table
-    const tableOrders = orders.filter(o =>
-      o.table_number_or_online === tableNumber &&
-      o.status === OrderStatus.IN_PROGRESS
-    );
+    const tableOrders = orders.filter(o => o.table_number_or_online === tableNumber);
+    const activeOrders = tableOrders.filter(o => o.status === OrderStatus.IN_PROGRESS);
 
-    // Pick the most recent one (highest timestamp)
-    const activeOrder = tableOrders.sort((a, b) =>
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    )[0];
+    console.log(`CART_SYNC_LOG: Table ${tableNumber} has ${tableOrders.length} total orders, ${activeOrders.length} are IN_PROGRESS.`);
+    activeOrders.forEach((o, i) => {
+      console.log(`CART_SYNC_LOG: Order #${i} (ID: ${o.order_id}) has ${o.items_ordered.length} items.`);
+    });
 
-    if (activeOrder) {
-      console.log('CART_SYNC_LOG: Found active order, setting cart items:', activeOrder.items_ordered.length);
-      setCart(activeOrder.items_ordered);
+    if (activeOrders.length > 0) {
+      // Aggregate ALL items from ALL active orders for this table
+      const allItems: CartItem[] = [];
+      activeOrders.forEach(o => {
+        const items = o.items_ordered || [];
+        items.forEach(item => {
+          // Merge duplicates if same ID and same status
+          const existing = allItems.find(ai => ai.id === item.id && ai.status === item.status);
+          if (existing) {
+            existing.quantity += item.quantity;
+          } else {
+            allItems.push({ ...item });
+          }
+        });
+      });
+      console.log('CART_SYNC_LOG: Aggregated items count:', allItems.length);
+      setCart(allItems);
     } else {
       console.log('CART_SYNC_LOG: No active order found for table:', tableNumber, 'Clearing cart.');
       setCart([]);
@@ -419,166 +430,174 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Cart Management
   const addToCart = useCallback(async (item: MenuItem, quantity: number) => {
-    const currentTable = tableNumberRef.current;
-    console.log('DEBUG: addToCart called', { itemName: item.name, quantity, restaurantId, tableNumber: currentTable });
-    if (!restaurantId) {
-      console.warn('DEBUG: Cannot add to cart - restaurantId is missing');
-      return;
-    }
-
-    // Ensure subtotal and taxes are calculated
-    const subtotal = item.price * quantity;
-    let totalWithTax = subtotal;
-    taxRates.forEach((tax) => {
-      totalWithTax += subtotal * tax.percentage;
-    });
-
-    // 1. Check for any active order for this table (excluding COMPLETED/CANCELLED)
-    const { data: existingOrder, error: fetchError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('table_number', currentTable)
-      .eq('status', OrderStatus.IN_PROGRESS)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error('DEBUG: Error fetching existing order:', fetchError);
-    }
-
-    if (existingOrder) {
-      console.log('DEBUG: Found existing PENDING order:', existingOrder.id);
-      // Merge items
-      const currentItems = (existingOrder.items as CartItem[]) || [];
-      const newItems = [...currentItems];
-      const existingItem = newItems.find(ni => ni.id === item.id && ni.status === ItemStatus.PENDING);
-
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        newItems.push({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity,
-          status: ItemStatus.PENDING
-        });
+    // Sequence operations to prevent race conditions during rapid AI ordering
+    return cartOperationQueue.current = cartOperationQueue.current.finally(async () => {
+      const currentTable = tableNumberRef.current;
+      console.log('DEBUG: addToCart execution started', { itemName: item.name, quantity, tableNumber: currentTable });
+      if (!restaurantId) {
+        console.warn('DEBUG: Cannot add to cart - restaurantId is missing');
+        return;
       }
 
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({
-          items: newItems,
-          status: OrderStatus.IN_PROGRESS, // Keep in progress
-          total_amount: Number(existingOrder.total_amount) + totalWithTax
-        })
-        .eq('id', existingOrder.id);
+      // Ensure subtotal and taxes are calculated
+      const subtotal = item.price * quantity;
+      let totalWithTax = subtotal;
+      taxRates.forEach((tax) => {
+        totalWithTax += subtotal * tax.percentage;
+      });
 
-      if (updateError) {
-        console.error('DEBUG: Error updating order in Supabase:', updateError);
-        window.alert(`Database Error: ${updateError.message}`);
-      } else {
-        console.log('DEBUG: Order updated successfully in Supabase');
-        await refreshData();
-      }
-    } else {
-      // Create new IN_PROGRESS order
-      const { error: insertError } = await supabase
+      // 1. Check for any active order for this table (excluding COMPLETED/CANCELLED)
+      const { data: existingOrder, error: fetchError } = await supabase
         .from('orders')
-        .insert([{
-          restaurant_id: restaurantId,
-          table_number: currentTable,
-          status: OrderStatus.IN_PROGRESS,
-          total_amount: totalWithTax,
-          items: [{
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('table_number', currentTable)
+        .eq('status', OrderStatus.IN_PROGRESS)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('DEBUG: Error fetching existing order:', fetchError);
+      }
+
+      if (existingOrder) {
+        console.log('DEBUG: Found existing PENDING order:', existingOrder.id);
+        // Merge items
+        const currentItems = (existingOrder.items as CartItem[]) || [];
+        const newItems = [...currentItems];
+        const existingItem = newItems.find(ni => ni.id === item.id && ni.status === ItemStatus.PENDING);
+
+        if (existingItem) {
+          existingItem.quantity += quantity;
+        } else {
+          newItems.push({
             id: item.id,
             name: item.name,
             price: item.price,
             quantity,
             status: ItemStatus.PENDING
-          }]
-        }]);
+          });
+        }
 
-      if (insertError) {
-        console.error('DEBUG: Error inserting new order in Supabase:', insertError);
-        window.alert(`Database Error: ${insertError.message}`);
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({
+            items: newItems,
+            status: OrderStatus.IN_PROGRESS, // Keep in progress
+            total_amount: Number(existingOrder.total_amount) + totalWithTax
+          })
+          .eq('id', existingOrder.id);
+
+        if (updateError) {
+          console.error('DEBUG: Error updating order in Supabase:', updateError);
+          window.alert(`Database Error: ${updateError.message}`);
+        } else {
+          console.log('DEBUG: Order updated successfully in Supabase');
+          await refreshData();
+        }
       } else {
-        console.log('DEBUG: New order inserted successfully in Supabase');
-        await refreshData(); // Refresh local orders state immediately
-      }
-    }
+        // Create new IN_PROGRESS order
+        const { error: insertError } = await supabase
+          .from('orders')
+          .insert([{
+            restaurant_id: restaurantId,
+            table_number: currentTable,
+            status: OrderStatus.IN_PROGRESS,
+            total_amount: totalWithTax,
+            items: [{
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity,
+              status: ItemStatus.PENDING
+            }]
+          }]);
 
-    // Update local cart for immediate UI feedback (it will also be synced via subscription)
-    setCart((prev) => {
-      // Find item with same ID AND status PENDING to merge quantity correctly
-      const existsIdx = prev.findIndex((ci) => ci.id === item.id && ci.status === ItemStatus.PENDING);
-      if (existsIdx > -1) {
-        const updatedCart = [...prev];
-        updatedCart[existsIdx] = { ...updatedCart[existsIdx], quantity: updatedCart[existsIdx].quantity + quantity };
-        return updatedCart;
+        if (insertError) {
+          console.error('DEBUG: Error inserting new order in Supabase:', insertError);
+          window.alert(`Database Error: ${insertError.message}`);
+        } else {
+          console.log('DEBUG: New order inserted successfully in Supabase');
+          await refreshData(); // Refresh local orders state immediately
+        }
       }
-      return [...prev, { id: item.id, name: item.name, price: item.price, quantity, status: ItemStatus.PENDING }];
+
+      // Update local cart for immediate UI feedback (it will also be synced via subscription)
+      setCart((prev) => {
+        // Find item with same ID AND status PENDING to merge quantity correctly
+        const existsIdx = prev.findIndex((ci) => ci.id === item.id && ci.status === ItemStatus.PENDING);
+        if (existsIdx > -1) {
+          const updatedCart = [...prev];
+          updatedCart[existsIdx] = { ...updatedCart[existsIdx], quantity: updatedCart[existsIdx].quantity + quantity };
+          return updatedCart;
+        }
+        return [...prev, { id: item.id, name: item.name, price: item.price, quantity, status: ItemStatus.PENDING }];
+      });
     });
-  }, [restaurantId, taxRates]);
+  }, [restaurantId, taxRates, refreshData]);
 
   const removeFromCart = useCallback(async (itemId: string, quantityToRemove?: number) => {
-    if (!restaurantId) return;
-    const currentTable = tableNumberRef.current;
+    return cartOperationQueue.current = cartOperationQueue.current.finally(async () => {
+      if (!restaurantId) return;
+      const currentTable = tableNumberRef.current;
+      console.log('DEBUG: removeFromCart execution started', { itemId, quantityToRemove, tableNumber: currentTable });
 
-    // 1. Fetch current pending order
-    const { data: order } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('table_number', currentTable)
-      .eq('status', OrderStatus.IN_PROGRESS)
-      .maybeSingle();
-
-    if (!order) return;
-
-    const items = order.items as CartItem[];
-    const itemIdx = items.findIndex(i => i.id === itemId);
-
-    if (itemIdx === -1 || items[itemIdx].status !== ItemStatus.PENDING) {
-      console.warn('Cannot remove item: not found or not in pending status.');
-      return;
-    }
-
-    const itemToModify = items[itemIdx];
-    let updatedItems: CartItem[];
-    let totalReductionWithTax = 0;
-
-    // Calculate reduction amount
-    const qtyToRemove = quantityToRemove !== undefined ? Math.min(quantityToRemove, itemToModify.quantity) : itemToModify.quantity;
-    const reductionSubtotal = itemToModify.price * qtyToRemove;
-    totalReductionWithTax = reductionSubtotal;
-    taxRates.forEach(tax => { totalReductionWithTax += reductionSubtotal * tax.percentage; });
-
-    if (qtyToRemove >= itemToModify.quantity) {
-      // Remove entirely
-      updatedItems = items.filter((_, idx) => idx !== itemIdx);
-    } else {
-      // Reduce quantity
-      updatedItems = [...items];
-      updatedItems[itemIdx] = { ...itemToModify, quantity: itemToModify.quantity - qtyToRemove };
-    }
-
-    if (updatedItems.length === 0) {
-      await supabase.from('orders').delete().eq('id', order.id);
-      setCart([]);
-    } else {
-      await supabase
+      // 1. Fetch current pending order
+      const { data: order } = await supabase
         .from('orders')
-        .update({
-          items: updatedItems,
-          total_amount: Math.max(0, Number(order.total_amount) - totalReductionWithTax)
-        })
-        .eq('id', order.id);
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('table_number', currentTable)
+        .eq('status', OrderStatus.IN_PROGRESS)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      setCart(updatedItems);
-    }
+      if (!order) return;
+
+      const items = order.items as CartItem[];
+      const itemIdx = items.findIndex(i => i.id === itemId);
+
+      if (itemIdx === -1 || items[itemIdx].status !== ItemStatus.PENDING) {
+        console.warn('Cannot remove item: not found or not in pending status.');
+        return;
+      }
+
+      const itemToModify = items[itemIdx];
+      let updatedItems: CartItem[];
+      let totalReductionWithTax = 0;
+
+      // Calculate reduction amount
+      const qtyToRemove = quantityToRemove !== undefined ? Math.min(quantityToRemove, itemToModify.quantity) : itemToModify.quantity;
+      const reductionSubtotal = itemToModify.price * qtyToRemove;
+      totalReductionWithTax = reductionSubtotal;
+      taxRates.forEach(tax => { totalReductionWithTax += reductionSubtotal * tax.percentage; });
+
+      if (qtyToRemove >= itemToModify.quantity) {
+        // Remove entirely
+        updatedItems = items.filter((_, idx) => idx !== itemIdx);
+      } else {
+        // Reduce quantity
+        updatedItems = [...items];
+        updatedItems[itemIdx] = { ...itemToModify, quantity: itemToModify.quantity - qtyToRemove };
+      }
+
+      if (updatedItems.length === 0) {
+        await supabase.from('orders').delete().eq('id', order.id);
+        setCart([]);
+      } else {
+        await supabase
+          .from('orders')
+          .update({
+            items: updatedItems,
+            total_amount: Math.max(0, Number(order.total_amount) - totalReductionWithTax)
+          })
+          .eq('id', order.id);
+
+        setCart(updatedItems);
+      }
+    });
   }, [restaurantId, taxRates]);
 
   const clearCart = useCallback(() => {
@@ -604,84 +623,88 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Order Management
   const placeOrder = useCallback(
     async (tableNumberOrOnline: string): Promise<Order> => {
-      if (cart.length === 0) throw new Error('Cannot place an empty order.');
-      if (!restaurantId) throw new Error('Restaurant ID is missing.');
+      return cartOperationQueue.current = cartOperationQueue.current.finally(async () => {
+        if (cart.length === 0) throw new Error('Cannot place an empty order.');
+        if (!restaurantId) throw new Error('Restaurant ID is missing.');
+        console.log('DEBUG: placeOrder execution started', { tableNumberOrOnline });
 
-      let subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      let additionalAmount = subtotal;
-      taxRates.forEach((tax) => {
-        additionalAmount += subtotal * tax.percentage;
-      });
-
-      // Check for any active order for this table (excluding COMPLETED/CANCELLED)
-      const { data: existingOrder } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .eq('table_number', tableNumberOrOnline)
-        .eq('status', OrderStatus.IN_PROGRESS)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      let finalOrderData;
-
-      if (existingOrder) {
-        // Merge items
-        const currentItems = existingOrder.items as CartItem[];
-        const newItems = [...currentItems];
-
-        cart.forEach(cartItem => {
-          const existingItem = newItems.find(ni => ni.id === cartItem.id && ni.status === ItemStatus.PENDING);
-          if (existingItem) {
-            existingItem.quantity += cartItem.quantity;
-          } else {
-            newItems.push(cartItem);
-          }
+        let subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        let additionalAmount = subtotal;
+        taxRates.forEach((tax) => {
+          additionalAmount += subtotal * tax.percentage;
         });
 
-        const { data, error } = await supabase
+        // Check for any active order for this table (excluding COMPLETED/CANCELLED)
+        const { data: existingOrder } = await supabase
           .from('orders')
-          .update({
-            items: newItems,
-            status: OrderStatus.IN_PROGRESS, // Keep in progress
-            total_amount: Number(existingOrder.total_amount) + additionalAmount
-          })
-          .eq('id', existingOrder.id)
-          .select()
-          .single();
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .eq('table_number', tableNumberOrOnline)
+          .eq('status', OrderStatus.IN_PROGRESS)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (error) throw error;
-        finalOrderData = data;
-      } else {
-        // Create new order
-        const { data, error } = await supabase
-          .from('orders')
-          .insert([{
-            restaurant_id: restaurantId,
-            table_number: tableNumberOrOnline,
-            status: OrderStatus.IN_PROGRESS,
-            total_amount: additionalAmount,
-            items: cart
-          }])
-          .select()
-          .single();
+        let finalOrderData;
 
-        if (error) throw error;
-        finalOrderData = data;
-      }
+        if (existingOrder) {
+          // Merge items
+          const currentItems = existingOrder.items as CartItem[];
+          const newItems = [...currentItems];
 
-      const resultOrder: Order = {
-        order_id: finalOrderData.id,
-        table_number_or_online: finalOrderData.table_number,
-        items_ordered: finalOrderData.items as CartItem[],
-        status: finalOrderData.status as OrderStatus,
-        total_amount: Number(finalOrderData.total_amount),
-        timestamp: finalOrderData.created_at,
-      };
+          cart.forEach(cartItem => {
+            const existingItem = newItems.find(ni => ni.id === cartItem.id && ni.status === ItemStatus.PENDING);
+            if (existingItem) {
+              existingItem.quantity += cartItem.quantity;
+            } else {
+              newItems.push(cartItem);
+            }
+          });
 
-      clearCart();
-      return resultOrder;
+          const { data, error } = await supabase
+            .from('orders')
+            .update({
+              items: newItems,
+              status: OrderStatus.IN_PROGRESS, // Keep in progress
+              total_amount: Number(existingOrder.total_amount) + additionalAmount
+            })
+            .eq('id', existingOrder.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+          finalOrderData = data;
+        } else {
+          // Create new order
+          const { data, error } = await supabase
+            .from('orders')
+            .insert([{
+              restaurant_id: restaurantId,
+              table_number: tableNumberOrOnline,
+              status: OrderStatus.IN_PROGRESS,
+              total_amount: additionalAmount,
+              items: cart
+            }])
+            .select()
+            .single();
+
+          if (error) throw error;
+          finalOrderData = data;
+        }
+
+        const resultOrder: Order = {
+          order_id: finalOrderData.id,
+          table_number_or_online: finalOrderData.table_number,
+          items_ordered: finalOrderData.items as CartItem[],
+          status: finalOrderData.status as OrderStatus,
+          total_amount: Number(finalOrderData.total_amount),
+          timestamp: finalOrderData.created_at,
+        };
+
+        clearCart();
+        return resultOrder;
+      });
+      return cartOperationQueue.current;
     },
     [cart, taxRates, clearCart, restaurantId]
   );
