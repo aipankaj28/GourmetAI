@@ -426,15 +426,15 @@ const CustomerInterface: React.FC = () => {
         setIsApiKeySelected(false); // Force re-selection if key is missing
       }
       handleAgentStateChange({ isProcessing: false, error: errorMessage });
-      stopLiveAgent(); // Call without argument
+      stopLiveAgent('Initialization failed in CustomerInterface'); // Call with reason
       liveSessionRef.current = null;
     }
   }, [isApiKeySelected, handleApiKeySelection, handleSpeechResponse, handleIntent,
     menuItems, cart, addToCart, clearCart, taxRates, placeOrder, sendServiceAlert,
     updateFilteredMenu, setFilteredMenuItems, tableNumber]);
 
-  const stopAgent = useCallback(() => {
-    stopLiveAgent(); // Call without argument
+  const stopAgent = useCallback((reason: string = 'User clicked stop') => {
+    stopLiveAgent(reason); // Call with reason
     liveSessionRef.current = null;
     hasGreetedRef.current = false; // Reset greeting flag
     setAvatarVideoTrack(null);

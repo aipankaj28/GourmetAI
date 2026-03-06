@@ -57,7 +57,7 @@ function createPcmBlob(data: Float32Array): Blob {
 
 let inputAudioContext: AudioContext | null = null;
 let outputAudioContext: AudioContext | null = null;
-let scriptProcessor: ScriptProcessorNode | null = null;
+let audioWorkletNode: AudioWorkletNode | null = null;
 let mediaStreamSource: MediaStreamAudioSourceNode | null = null;
 let mediaStream: MediaStream | null = null;
 let outputNode: GainNode | null = null;
@@ -111,7 +111,9 @@ export const startLiveAgent = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     console.log('DEBUG: GoogleGenAI instance created.');
 
-    console.log('DEBUG: Initializing AudioContexts...');
+    console.log('DEBUG: Initializing AudioContexts (cleaning up old ones if any)...');
+    cleanupAudioContexts();
+
     inputAudioContext = new (window.AudioContext)({ sampleRate: 16000 });
     outputAudioContext = new (window.AudioContext)({ sampleRate: 24000 });
     console.log('DEBUG: AudioContexts initialized. Input state:', inputAudioContext.state, 'Output state:', outputAudioContext.state);
@@ -143,40 +145,43 @@ export const startLiveAgent = async (
       throw new Error('Microphone access failed');
     }
 
+    // 1. Loading the AudioWorklet module for stable input capture
+    console.log('DEBUG: Adding AudioWorklet module...');
+    try {
+      await inputAudioContext.audioWorklet.addModule('/worklets/audio-processor.js');
+      console.log('DEBUG: AudioWorklet module added successfully.');
+    } catch (err) {
+      console.error('ERROR: Failed to load AudioWorklet module:', err);
+      throw new Error('AudioWorklet module failed to load');
+    }
+
     mediaStreamSource = inputAudioContext.createMediaStreamSource(mediaStream);
-    scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
-    console.log('DEBUG: MediaStreamSource and ScriptProcessor created.');
+    audioWorkletNode = new AudioWorkletNode(inputAudioContext, 'audio-input-processor');
+    console.log('DEBUG: MediaStreamSource and AudioWorkletNode created.');
 
-    scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
-      const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+    audioWorkletNode.port.onmessage = (event) => {
+      const { audio, rms } = event.data;
 
-      // Calculate RMS (Root Mean Square) for simple Voice Activity Detection (VAD)
-      let sum = 0;
-      for (let i = 0; i < inputData.length; i++) {
-        sum += inputData[i] * inputData[i];
-      }
-      const rms = Math.sqrt(sum / inputData.length);
-
-      // Threshold 0.002 is a more sensitive default for "active speaking"
+      // Simple VAD based on RMS from worklet
       if (rms > 0.002) {
         if (isAwake) {
           resetSilenceTimer(onAgentStateChange);
         }
       }
 
-      const pcmBlob = createPcmBlob(inputData);
-      sessionPromise?.then((session) => {
+      const pcmBlob = createPcmBlob(audio);
+      if (sessionInstance && sessionInstance.sendRealtimeInput) {
         try {
-          session.sendRealtimeInput({ media: pcmBlob });
+          sessionInstance.sendRealtimeInput({ media: pcmBlob });
         } catch (inputErr) {
           console.warn('DEBUG: Failed to send realtime input (session likely closed):', inputErr);
         }
-      });
+      }
     };
 
-    mediaStreamSource.connect(scriptProcessor);
-    scriptProcessor.connect(inputAudioContext.destination);
-    console.log('DEBUG: Microphone stream connected to script processor.');
+    mediaStreamSource.connect(audioWorkletNode);
+    audioWorkletNode.connect(inputAudioContext.destination);
+    console.log('DEBUG: Microphone stream connected to AudioWorkletNode.');
 
     console.log('DEBUG: Attempting to connect to Gemini Live API...');
 
@@ -411,8 +416,9 @@ export const startLiveAgent = async (
         onerror: (e: any) => {
           console.error('*** ERROR: Gemini Live session error event: ***', e);
           if (e.message) console.error('Error message:', e.message);
-          onAgentStateChange({ error: 'Voice agent error. Please try again.', isListening: false, isProcessing: false, isSpeaking: false });
-          stopLiveAgent();
+          console.error('Full error details:', JSON.stringify(e));
+          onAgentStateChange({ error: 'Voice agent encountered an error. Attempting to keep session alive...', isProcessing: false });
+          // We don't necessarily stop on EVERY error now, unless it's fatal
         },
         onclose: (e: CloseEvent) => {
           console.log(`DEBUG: Gemini Live session closed. Code: ${e.code}, Reason: ${e.reason || 'No reason provided'}`);
@@ -476,8 +482,8 @@ export const startLiveAgent = async (
   }
 };
 
-export const stopLiveAgent = () => { // No 'session' parameter
-  console.log('DEBUG: Entering stopLiveAgent function.');
+export const stopLiveAgent = (reason: string = 'User requested') => {
+  console.log(`DEBUG: Entering stopLiveAgent function. Reason: ${reason}`);
   if (silenceTimer) {
     clearTimeout(silenceTimer);
     silenceTimer = null;
@@ -536,9 +542,9 @@ const resetSilenceTimer = (onAgentStateChange: (state: Partial<LiveAgentState>) 
 
 const stopAudioStreaming = () => {
   console.log('DEBUG: Stopping audio streaming...');
-  if (scriptProcessor) {
-    scriptProcessor.disconnect();
-    scriptProcessor = null;
+  if (audioWorkletNode) {
+    audioWorkletNode.disconnect();
+    audioWorkletNode = null;
   }
   if (mediaStreamSource) {
     mediaStreamSource.disconnect();
