@@ -116,6 +116,26 @@ const AdminDashboard: React.FC = () => {
         </Button>
       </div>
 
+      {/* Service Alerts */}
+      <div className="bg-white rounded-lg shadow-xl p-6 mb-8">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-4">Service Alerts</h2>
+        {serviceAlerts.length === 0 ? (
+          <p className="text-center text-gray-600">No active service alerts.</p>
+        ) : (
+          <ul className="divide-y divide-gray-200">
+            {serviceAlerts.filter(alert => !alert.resolved).map(alert => (
+              <li key={alert.id} className="py-4 flex justify-between items-center">
+                <div>
+                  <p className="text-lg font-semibold text-gray-800">{import.meta.env.VITE_TABLE_LABEL || 'Table'} {alert.table}: {alert.message || `Request for ${alert.type}`}</p>
+                  <p className="text-sm text-gray-500">{new Date(alert.timestamp).toLocaleString()}</p>
+                </div>
+                <Button variant="primary" size="sm" onClick={async () => await resolveServiceAlert(alert.id)}>Resolve</Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Restaurant Settings */}
       <div className="bg-white rounded-lg shadow-xl p-4 md:p-6 mb-8">
         <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-6 border-b pb-4">Restaurant Settings</h2>
@@ -204,25 +224,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Service Alerts */}
-      <div className="bg-white rounded-lg shadow-xl p-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-4">Service Alerts</h2>
-        {serviceAlerts.length === 0 ? (
-          <p className="text-center text-gray-600">No active service alerts.</p>
-        ) : (
-          <ul className="divide-y divide-gray-200">
-            {serviceAlerts.filter(alert => !alert.resolved).map(alert => (
-              <li key={alert.id} className="py-4 flex justify-between items-center">
-                <div>
-                  <p className="text-lg font-semibold text-gray-800">{import.meta.env.VITE_TABLE_LABEL || 'Table'} {alert.table}: {alert.message || `Request for ${alert.type}`}</p>
-                  <p className="text-sm text-gray-500">{new Date(alert.timestamp).toLocaleString()}</p>
-                </div>
-                <Button variant="primary" size="sm" onClick={async () => await resolveServiceAlert(alert.id)}>Resolve</Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       {/* Menu Item Modal */}
       <Modal
@@ -325,7 +326,7 @@ const AdminDashboard: React.FC = () => {
           />
         </form>
       </Modal>
-    </div>
+    </div >
   );
 };
 
