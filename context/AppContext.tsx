@@ -280,6 +280,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Sync cart with active order for current table
   useEffect(() => {
+    console.log('CART_SYNC_LOG: Checking orders for table:', tableNumber, 'Total orders:', orders.length);
     // Find any non-cancelled orders for this table
     const tableOrders = orders.filter(o =>
       o.table_number_or_online === tableNumber &&
@@ -292,8 +293,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     )[0];
 
     if (activeOrder) {
+      console.log('CART_SYNC_LOG: Found active order, setting cart items:', activeOrder.items_ordered.length);
       setCart(activeOrder.items_ordered);
     } else {
+      console.log('CART_SYNC_LOG: No active order found for table:', tableNumber, 'Clearing cart.');
       setCart([]);
     }
   }, [orders, tableNumber]);
@@ -458,6 +461,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         window.alert(`Database Error: ${updateError.message}`);
       } else {
         console.log('DEBUG: Order updated successfully in Supabase');
+        await refreshData();
       }
     } else {
       // Create new IN_PROGRESS order
@@ -482,14 +486,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         window.alert(`Database Error: ${insertError.message}`);
       } else {
         console.log('DEBUG: New order inserted successfully in Supabase');
+        await refreshData(); // Refresh local orders state immediately
       }
     }
 
     // Update local cart for immediate UI feedback (it will also be synced via subscription)
     setCart((prev) => {
-      const exists = prev.find((ci) => ci.id === item.id);
-      if (exists) {
-        return prev.map((ci) => ci.id === item.id ? { ...ci, quantity: ci.quantity + quantity } : ci);
+      // Find item with same ID AND status PENDING to merge quantity correctly
+      const existsIdx = prev.findIndex((ci) => ci.id === item.id && ci.status === ItemStatus.PENDING);
+      if (existsIdx > -1) {
+        const updatedCart = [...prev];
+        updatedCart[existsIdx] = { ...updatedCart[existsIdx], quantity: updatedCart[existsIdx].quantity + quantity };
+        return updatedCart;
       }
       return [...prev, { id: item.id, name: item.name, price: item.price, quantity, status: ItemStatus.PENDING }];
     });

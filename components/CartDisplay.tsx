@@ -54,7 +54,7 @@ const CartDisplay: React.FC<CartDisplayProps> = ({ cartItems, onClearCart, onPla
         <>
           <ul className="divide-y divide-gray-200">
             {cartItems.map((item) => (
-              <li key={item.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <li key={`${item.id}-${item.status}`} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex-grow">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-base md:text-lg font-semibold text-gray-800">{item.name}</p>
