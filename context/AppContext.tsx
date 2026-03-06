@@ -33,6 +33,7 @@ interface AppContextType {
   filteredMenuItems: MenuItem[];
   setFilteredMenuItems: React.Dispatch<React.SetStateAction<MenuItem[]>>;
   updateFilteredMenu: (filters: { category?: Category; type?: MealType; name?: string }) => void;
+  clearFilters: () => void;
   tableNumber: string;
   setTableNumber: (table: string) => void;
   totalTables: number;
@@ -52,6 +53,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [serviceAlerts, setServiceAlerts] = useState<ServiceAlert[]>([]);
+  const [activeFilters, setActiveFilters] = useState<{ category?: Category; type?: MealType; name?: string; availabilityOnly?: boolean }>({});
   const [filteredMenuItems, setFilteredMenuItems] = useState<MenuItem[]>([]);
   const [tableNumber, setTableNumber] = useState<string>('1');
   const tableNumberRef = useRef(tableNumber);
@@ -302,8 +304,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [orders, tableNumber]);
 
   useEffect(() => {
-    setFilteredMenuItems(menuItems);
-  }, [menuItems]);
+    let tempItems = [...menuItems];
+
+    if (activeFilters.category) {
+      tempItems = tempItems.filter((item) => item.category === activeFilters.category);
+    }
+    if (activeFilters.type) {
+      tempItems = tempItems.filter((item) => item.type === activeFilters.type);
+    }
+    if (activeFilters.name) {
+      const searchTerm = activeFilters.name.toLowerCase();
+      tempItems = tempItems.filter((item) =>
+        item.name.toLowerCase().includes(searchTerm) ||
+        item.description.toLowerCase().includes(searchTerm)
+      );
+    }
+    if (activeFilters.availabilityOnly) {
+      tempItems = tempItems.filter((item) => item.availability);
+    }
+    setFilteredMenuItems(tempItems);
+  }, [menuItems, activeFilters]);
 
   // Menu Item CRUD
   const addMenuItem = useCallback(async (item: Omit<MenuItem, 'id'>) => {
@@ -844,26 +864,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Menu Filtering Logic
   const updateFilteredMenu = useCallback(
-    (filters: { category?: Category; type?: MealType; name?: string }) => {
-      let tempItems = [...menuItems];
-
-      if (filters.category) {
-        tempItems = tempItems.filter((item) => item.category === filters.category);
-      }
-      if (filters.type) {
-        tempItems = tempItems.filter((item) => item.type === filters.type);
-      }
-      if (filters.name) {
-        const searchTerm = filters.name.toLowerCase();
-        tempItems = tempItems.filter((item) =>
-          item.name.toLowerCase().includes(searchTerm) ||
-          item.description.toLowerCase().includes(searchTerm)
-        );
-      }
-      setFilteredMenuItems(tempItems);
+    (filters: { category?: Category; type?: MealType; name?: string; availabilityOnly?: boolean }) => {
+      // If we pass an empty object or null, it might be intended to clear.
+      setActiveFilters(prev => ({ ...prev, ...filters }));
     },
-    [menuItems]
+    []
   );
+
+  const clearFilters = useCallback(() => {
+    setActiveFilters({});
+  }, []);
 
 
   const value = {
@@ -892,6 +902,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     filteredMenuItems,
     setFilteredMenuItems,
     updateFilteredMenu,
+    clearFilters,
     tableNumber,
     lastSyncTime,
     syncStatus,

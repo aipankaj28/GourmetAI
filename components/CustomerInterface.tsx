@@ -22,6 +22,7 @@ const CustomerInterface: React.FC = () => {
     generateBill,
     sendServiceAlert,
     updateFilteredMenu,
+    clearFilters,
     filteredMenuItems,
     setFilteredMenuItems,
     tableNumber,
@@ -64,8 +65,7 @@ const CustomerInterface: React.FC = () => {
 
   useEffect(() => {
     checkApiKey();
-    setFilteredMenuItems(menuItems); // Initialize filtered menu
-  }, [checkApiKey, menuItems, setFilteredMenuItems]);
+  }, [checkApiKey]);
 
   // Sync receipt with real-time orders
   useEffect(() => {
@@ -170,8 +170,8 @@ const CustomerInterface: React.FC = () => {
           agentResponseText += `Filtered by attribute "${queryAttribute}". `;
         }
 
-        if (matchedItems.length > 0) {
-          setFilteredMenuItems(matchedItems);
+        if (matchedItems.length > 0 || queryItemName || queryCategory || queryType) {
+          updateFilteredMenu({ category: queryCategory as Category, type: queryType as MealType, name: queryItemName });
           setActiveTab('menu');
           if (!agentResponseText) agentResponseText = 'Here are some items that match your query.';
           return {
@@ -180,7 +180,7 @@ const CustomerInterface: React.FC = () => {
             message: agentResponseText
           };
         } else {
-          setFilteredMenuItems([]);
+          updateFilteredMenu({ name: '' }); // Clear search if no results found for specific name
           agentResponseText = 'I could not find any items matching your criteria.';
           return { success: false, items: [], message: agentResponseText };
         }
@@ -458,7 +458,7 @@ const CustomerInterface: React.FC = () => {
 
   const menuFilterControls = (
     <div className="flex flex-wrap gap-1 md:gap-2 mb-2 md:mb-4 p-2 md:p-4 bg-white rounded-lg shadow-sm">
-      <Button onClick={() => setFilteredMenuItems(menuItems)} variant="outline" size="sm" className="text-[10px] md:text-sm px-2 py-0.5 md:px-4 md:py-2">
+      <Button onClick={() => clearFilters()} variant="outline" size="sm" className="text-[10px] md:text-sm px-2 py-0.5 md:px-4 md:py-2">
         All
       </Button>
       {Object.values(Category).map(cat => (
@@ -485,7 +485,7 @@ const CustomerInterface: React.FC = () => {
       ))}
       <Button
         onClick={() => {
-          setFilteredMenuItems(menuItems.filter(item => item.availability));
+          updateFilteredMenu({ availabilityOnly: true });
         }}
         variant="outline"
         size="sm"
